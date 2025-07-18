@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>媽媽樂早餐屋 - 管理後台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js 已移除 -->
+    <script src="https://unpkg.com/lucide-react@0.378.0/dist/umd/lucide.js" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        .sidebar-link { @apply flex items-center p-3 my-1 text-gray-200 rounded-lg hover:bg-gray-700 transition-colors; }
+        .sidebar-link.active { @apply bg-indigo-600 text-white; }
+        .main-content { @apply p-8; }
+        .card { @apply bg-white rounded-xl shadow-md p-6; }
+        .input-field { @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500; }
+        .btn { @apply px-4 py-2 rounded-lg font-semibold transition-colors; }
+        .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
+        .btn-secondary { @apply bg-gray-200 text-gray-800 hover:bg-gray-300; }
+        .toggle-bg:after {
+            content: '';
+            @apply absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform shadow-sm;
+        }
+        input:checked + .toggle-bg:after {
+            @apply transform translate-x-full;
+        }
+        input:checked + .toggle-bg {
+            @apply bg-indigo-600;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gray-800 text-white h-screen fixed flex flex-col">
+        <div class="p-6 text-center border-b border-gray-700">
+            <h1 class="text-2xl font-bold">媽媽樂早餐屋</h1>
+            <p class="text-sm text-gray-400">管理後台</p>
+        </div>
+        <nav class="flex-grow p-4 flex flex-col">
+            <a href="#dashboard" class="sidebar-link active" data-page="dashboard">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i> 總覽儀表板
+            </a>
+            <a href="#orders" class="sidebar-link" data-page="orders">
+                <i data-lucide="clipboard-list" class="w-5 h-5 mr-3"></i> 訂單管理
+            </a>
+            <a href="#menu" class="sidebar-link" data-page="menu">
+                <i data-lucide="book-open" class="w-5 h-5 mr-3"></i> 菜單管理
+            </a>
+            <!-- 營業設定與付款價格的連結已移除 -->
+            <a href="#store-info" class="sidebar-link" data-page="store-info">
+                <i data-lucide="store" class="w-5 h-5 mr-3"></i> 店家資訊
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-700">
+            <a href="#login" class="sidebar-link" data-page="login">
+                <i data-lucide="log-out" class="w-5 h-5 mr-3"></i> 登出
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ml-64 flex-1">
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="main-content">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">總覽儀表板</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="card">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-100 rounded-full mr-4">
+                            <i data-lucide="dollar-sign" class="w-6 h-6 text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">今日營業額</p>
+                            <p class="text-3xl font-bold text-gray-800">$ 12,850</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-blue-100 rounded-full mr-4">
+                            <i data-lucide="shopping-cart" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">今日訂單數</p>
+                            <p class="text-3xl font-bold text-gray-800">152</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card flex justify-between items-center">
+                    <div>
+                        <p class="text-gray-500">營業狀態</p>
+                        <p id="store-status-text" class="text-3xl font-bold text-green-600">營業中</p>
+                    </div>
+                    <button id="toggle-store-status-btn" class="btn bg-red-500 text-white hover:bg-red-600">立即打烊</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 mt-6">
+                <div class="card">
+                    <h3 class="font-bold text-lg mb-4">近期訂單</h3>
+                    <p class="text-gray-500">此處將顯示即時進來的訂單列表...</p>
+                </div>
+                <!-- 訂單分佈圖已移除 -->
+            </div>
+        </div>
+
+        <!-- Orders Page -->
+        <div id="orders-page" class="main-content hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">訂單管理</h2>
+            <div class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex space-x-2">
+                        <input type="date" id="order-date-filter" class="input-field w-auto">
+                        <select id="order-status-filter" class="input-field w-auto">
+                            <option value="all">所有狀態</option>
+                            <option value="new">新訂單</option>
+                            <option value="making">製作中</option>
+                            <option value="done">已完成</option>
+                            <option value="cancelled">已作廢</option>
+                        </select>
+                        <button id="filter-orders-btn" class="btn btn-primary">篩選</button>
+                    </div>
+                    <input type="text" id="order-search-input" placeholder="搜尋桌號或內容..." class="input-field w-1/3">
+                </div>
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="p-3">桌號</th>
+                            <th class="p-3">時間</th>
+                            <th class="p-3">明細</th>
+                            <th class="p-3">金額</th>
+                            <th class="p-3">狀態</th>
+                            <th class="p-3">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body">
+                        <!-- 訂單將由 JS 動態生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Menu Page -->
+        <div id="menu-page" class="main-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800">菜單管理</h2>
+                <button id="add-menu-item-btn" class="btn btn-primary">
+                    <i data-lucide="plus" class="inline-block w-5 h-5 mr-1"></i> 新增餐點
+                </button>
+            </div>
+            <div class="card mb-6">
+                <h3 class="text-xl font-bold mb-4">JSON 快速匯入</h3>
+                <p class="text-gray-600 mb-2">可將編輯好的菜單（JSON格式）貼於下方，一次性匯入。</p>
+                <textarea id="json-import-area" class="input-field w-full h-32 font-mono text-sm" placeholder='[{"name": "卡拉雞腿堡", "category": "漢堡", "price": 65, "isAvailable": true}]'></textarea>
+                <button id="import-json-btn" class="btn btn-secondary mt-2">匯入</button>
+            </div>
+            <div id="menu-item-list" class="space-y-4">
+                <!-- 菜單項目將由 JS 動態生成 -->
+            </div>
+        </div>
+
+        <!-- Store Info Page -->
+        <div id="store-info-page" class="main-content hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">店家資訊</h2>
+            <div class="card max-w-2xl mx-auto">
+                <div class="space-y-4">
+                    <div>
+                        <label class="font-semibold">店家名稱</label>
+                        <input type="text" class="input-field" value="媽媽樂早餐屋">
+                    </div>
+                    <div>
+                        <label class="font-semibold">店家 LOGO</label>
+                        <input type="file" class="input-field">
+                    </div>
+                    <div>
+                        <label class="font-semibold">地址</label>
+                        <input type="text" class="input-field" value="新北市中和區XX路XX巷XX號">
+                    </div>
+                     <div>
+                        <label class="font-semibold">電話</label>
+                        <input type="text" class="input-field" value="02-1234-5678">
+                    </div>
+                    <div>
+                        <label class="font-semibold">店家簡介</label>
+                        <textarea class="input-field" rows="4">用最新鮮的食材，做最有溫度的早餐！</textarea>
+                    </div>
+                </div>
+                 <div class="text-right mt-6">
+                    <button class="btn btn-primary">儲存資訊</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Login Page (Placeholder) -->
+        <div id="login-page" class="main-content hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">登入與權限</h2>
+             <div class="card max-w-md mx-auto">
+                <h3 class="text-xl font-bold mb-4">修改密碼</h3>
+                <div class="space-y-4">
+                    <input type="password" placeholder="目前密碼" class="input-field">
+                    <input type="password" placeholder="新密碼" class="input-field">
+                    <input type="password" placeholder="確認新密碼" class="input-field">
+                </div>
+                <div class="text-right mt-6">
+                    <button class="btn btn-primary">確認修改</button>
+                </div>
+             </div>
+        </div>
+
+    </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+    // --- State Management ---
+    let isStoreOpen = true;
+    let menuItems = []; // 菜單從空的開始
+    let mockOrders = [
+        { id: 1, table: 'A3', time: '10:33 AM', details: '卡拉雞腿堡 x1, 冰奶茶 x1 (不要冰)', amount: 90, status: 'new' },
+        { id: 2, table: 'B1', time: '10:31 AM', details: '玉米蛋餅 x2, 無糖豆漿 x1', amount: 90, status: 'making' },
+        { id: 3, table: 'A5', time: '10:28 AM', details: '花生厚片 x1', amount: 30, status: 'done' },
+        { id: 4, table: 'C2', time: '10:25 AM', details: '蘿蔔糕加蛋 x1', amount: 45, status: 'cancelled' },
+    ];
+
+    // --- DOM Elements ---
+    const getEl = (id) => document.getElementById(id);
+    const storeStatusText = getEl('store-status-text');
+    const toggleStoreStatusBtn = getEl('toggle-store-status-btn');
+    const ordersTableBody = getEl('orders-table-body');
+    const filterOrdersBtn = getEl('filter-orders-btn');
+    const orderStatusFilter = getEl('order-status-filter');
+    const menuItemList = getEl('menu-item-list');
+    const importJsonBtn = getEl('import-json-btn');
+    const jsonImportArea = getEl('json-import-area');
+    const addMenuItemBtn = getEl('add-menu-item-btn');
+
+    // --- Functions ---
+
+    // Dashboard Functions
+    const toggleStoreStatus = () => {
+        isStoreOpen = !isStoreOpen;
+        if (isStoreOpen) {
+            storeStatusText.textContent = '營業中';
+            storeStatusText.className = 'text-3xl font-bold text-green-600';
+            toggleStoreStatusBtn.textContent = '立即打烊';
+            toggleStoreStatusBtn.className = 'btn bg-red-500 text-white hover:bg-red-600';
+        } else {
+            storeStatusText.textContent = '休息中';
+            storeStatusText.className = 'text-3xl font-bold text-gray-500';
+            toggleStoreStatusBtn.textContent = '立即開店';
+            toggleStoreStatusBtn.className = 'btn bg-green-500 text-white hover:bg-green-600';
+        }
+    };
+
+    // Order Functions
+    const renderOrders = (ordersToRender) => {
+        ordersTableBody.innerHTML = '';
+        if (ordersToRender.length === 0) {
+            ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">找不到符合條件的訂單</td></tr>';
+            return;
+        }
+        ordersToRender.forEach(order => {
+            const statusMap = {
+                new: { text: '新訂單', class: 'bg-red-100 text-red-800' },
+                making: { text: '製作中', class: 'bg-yellow-100 text-yellow-800' },
+                done: { text: '已完成', class: 'bg-green-100 text-green-800' },
+                cancelled: { text: '已作廢', class: 'bg-gray-200 text-gray-700' },
+            };
+            const currentStatus = statusMap[order.status];
+            const row = document.createElement('tr');
+            row.className = 'border-b';
+            row.innerHTML = `
+                <td class="p-3 font-semibold">${order.table}</td>
+                <td class="p-3">${order.time}</td>
+                <td class="p-3">${order.details}</td>
+                <td class="p-3">$${order.amount}</td>
+                <td class="p-3"><span class="px-2 py-1 text-xs rounded-full ${currentStatus.class}">${currentStatus.text}</span></td>
+                <td class="p-3">
+                    <select class="input-field text-sm">
+                        <option>更改狀態</option>
+                        <option value="making">製作中</option>
+                        <option value="done">已完成</option>
+                        <option value="cancelled">作廢訂單</option>
+                    </select>
+                </td>
+            `;
+            ordersTableBody.appendChild(row);
+        });
+    };
+
+    const handleFilterOrders = () => {
+        const selectedStatus = orderStatusFilter.value;
+        let filteredOrders = mockOrders;
+        if (selectedStatus !== 'all') {
+            filteredOrders = mockOrders.filter(order => order.status === selectedStatus);
+        }
+        renderOrders(filteredOrders);
+    };
+    
+    // Menu Functions
+    const renderMenuItems = () => {
+        menuItemList.innerHTML = '';
+        if (menuItems.length === 0) {
+            menuItemList.innerHTML = '<p class="text-center text-gray-500 card">目前沒有任何菜單項目，請新增或匯入您的菜單。</p>';
+            return;
+        }
+        menuItems.forEach((item, index) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'card flex items-center justify-between';
+            itemEl.innerHTML = `
+                <div>
+                    <p class="text-lg font-bold">${item.name}</p>
+                    <p class="text-gray-500">${item.category} - $${item.price}</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center cursor-pointer">
+                        <span class="mr-2 text-sm">${item.isAvailable ? '供應中' : '已下架'}</span>
+                        <input type="checkbox" class="sr-only toggle-availability" data-index="${index}" ${item.isAvailable ? 'checked' : ''}>
+                        <div class="relative w-12 h-6 bg-gray-200 rounded-full toggle-bg"></div>
+                    </label>
+                    <button class="p-2 hover:bg-gray-200 rounded-full"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                    <button class="p-2 hover:bg-gray-200 rounded-full"><i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i></button>
+                </div>
+            `;
+            menuItemList.appendChild(itemEl);
+        });
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    };
+
+    const handleJsonImport = () => {
+        const jsonString = jsonImportArea.value;
+        try {
+            const data = JSON.parse(jsonString);
+            if (Array.isArray(data)) {
+                menuItems = data;
+                renderMenuItems();
+                alert('菜單匯入成功！');
+                jsonImportArea.value = '';
+            } else {
+                alert('匯入失敗：JSON 格式不是一個有效的陣列。');
+            }
+        } catch (error) {
+            alert(`匯入失敗：無效的 JSON 格式。\n錯誤訊息: ${error.message}`);
+        }
+    };
+
+    // --- Page Navigation ---
+    const sidebarLinks = document.querySelectorAll('.sidebar-link');
+    const pages = document.querySelectorAll('.main-content');
+
+    const showPage = (pageId) => {
+        pages.forEach(page => {
+            page.classList.toggle('hidden', page.id !== `${pageId}-page`);
+        });
+        sidebarLinks.forEach(link => {
+            link.classList.toggle('active', link.dataset.page === pageId);
+        });
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    };
+
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = link.dataset.page;
+            if (pageId) {
+                window.location.hash = pageId;
+                showPage(pageId);
+            }
+        });
+    });
+
+    // --- Event Listeners ---
+    toggleStoreStatusBtn.addEventListener('click', toggleStoreStatus);
+    filterOrdersBtn.addEventListener('click', handleFilterOrders);
+    importJsonBtn.addEventListener('click', handleJsonImport);
+    addMenuItemBtn.addEventListener('click', () => alert('（模擬）開啟新增餐點視窗...'));
+
+
+    // --- Initial Load ---
+    const initialPage = window.location.hash.substring(1) || 'dashboard';
+    showPage(initialPage);
+    renderOrders(mockOrders);
+    renderMenuItems();
+});
+</script>
+</body>
+</html>
