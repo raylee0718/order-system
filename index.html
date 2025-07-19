@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>媽媽樂早餐屋 - 線上點餐</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        .backdrop-blur-sm { backdrop-filter: blur(4px); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+        input[type='number']::-webkit-inner-spin-button,
+        input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type='number'] { -moz-appearance: textfield; }
+        /* 為載入中狀態新增一個動畫 */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #fb923c; /* amber-500 */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-amber-50">
+
+    <!-- 主容器 -->
+    <div id="app" class="container mx-auto p-4 max-w-4xl min-h-screen">
+
+        <!-- 頂部 Header -->
+        <header class="text-center my-10">
+            <h1 class="text-5xl font-bold text-amber-800 tracking-wider">媽媽樂早餐屋</h1>
+            <p class="text-gray-500 mt-3 text-lg">桌號: <span id="tableNumber" class="font-semibold text-amber-600">讀取中...</span></p>
+        </header>
+
+        <!-- 菜單分類 -->
+        <div id="category-tabs" class="flex justify-center flex-wrap gap-2 md:gap-4 mb-10 sticky top-4 bg-amber-50/80 backdrop-blur-sm py-3 z-10">
+            <!-- 分類按鈕將由 JS 動態生成 -->
+        </div>
+
+        <!-- 菜單項目網格 -->
+        <div id="menu-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- 載入動畫 -->
+            <div id="loading-spinner" class="col-span-full flex flex-col items-center justify-center p-16 text-gray-500">
+                <div class="loader"></div>
+                <p class="mt-4">正在努力加載菜單...</p>
+            </div>
+            <!-- 菜單卡片將由 JS 動態生成 -->
+        </div>
+
+    </div>
+
+    <!-- 浮動購物車按鈕 -->
+    <div class="fixed bottom-8 right-8 z-50">
+        <button id="cart-button" class="bg-indigo-600 text-white w-20 h-20 rounded-full shadow-xl flex items-center justify-center transform hover:scale-110 transition-all duration-300 ease-in-out relative">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span id="cart-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-sm font-bold rounded-full h-8 w-8 flex items-center justify-center border-2 border-white hidden">0</span>
+        </button>
+    </div>
+
+    <!-- 客製化餐點 Modal -->
+    <div id="customization-modal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+            <div class="p-6 border-b">
+                <h2 id="custom-modal-title" class="text-2xl font-bold text-gray-800 text-center">客製化餐點</h2>
+            </div>
+            <div class="p-8 space-y-6">
+                <div>
+                    <label for="item-notes" class="block text-md font-medium text-gray-700 mb-2">特別需求</label>
+                    <textarea id="item-notes" rows="3" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500" placeholder="例如：不要加胡椒、蛋要全熟..."></textarea>
+                </div>
+                <div class="flex items-center justify-between">
+                    <label for="item-quantity" class="block text-md font-medium text-gray-700">數量</label>
+                    <div class="flex items-center space-x-4">
+                        <button id="decrease-quantity" class="w-8 h-8 flex items-center justify-center bg-gray-200 text-lg font-bold rounded-full text-gray-600 hover:bg-gray-300 transition-colors">-</button>
+                        <input type="number" id="item-quantity" value="1" min="1" class="w-16 text-center text-lg font-semibold border-transparent focus:border-transparent focus:ring-0">
+                        <button id="increase-quantity" class="w-8 h-8 flex items-center justify-center bg-gray-200 text-lg font-bold rounded-full text-gray-600 hover:bg-gray-300 transition-colors">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3 rounded-b-2xl">
+                <button id="cancel-customization" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 font-semibold transition-colors">取消</button>
+                <button id="confirm-customization" class="bg-amber-500 text-white px-6 py-3 rounded-lg hover:bg-amber-600 font-semibold transition-colors">加入購物車</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 購物車 Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full md:w-2/3 lg:w-1/2 max-w-2xl flex flex-col" style="max-height: 90vh;">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800">我的訂單 (桌號: <span id="cart-table-number"></span>)</h2>
+                <button id="close-cart-button" class="text-gray-400 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+            <div id="cart-items" class="p-6 overflow-y-auto flex-grow"></div>
+            <div class="p-6 border-t bg-gray-50 rounded-b-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-lg font-medium text-gray-600">總計</span>
+                    <span id="cart-total" class="text-3xl font-bold text-gray-800">$0</span>
+                </div>
+                <button id="confirm-order-button" class="w-full bg-green-500 text-white py-4 rounded-lg font-semibold text-lg hover:bg-green-600 transition-colors disabled:bg-gray-300">確認下單</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 訂單成功 Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md text-center p-10">
+            <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-green-100 mb-5">
+                <svg class="h-16 w-16 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">下單成功！</h2>
+            <p class="text-gray-600 text-lg">感謝您的訂購，餐點正在為您準備中！</p>
+            <button id="close-success-button" class="mt-8 w-full bg-green-500 text-white py-3 rounded-lg font-semibold text-lg hover:bg-green-600 transition-colors">太棒了！</button>
+        </div>
+    </div>
+
+<!-- Firebase SDK -->
+<script type="module">
+    // 匯入 Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- Firebase 初始化 ---
+    // 提示：請將下方的 firebaseConfig 物件換成你自己的 Firebase 專案設定
+    const firebaseConfig = {
+  apiKey: "AIzaSyBenmy2n3JAJvmph7baVPfHGeoia--B5NM",
+  authDomain: "order-system-4e277.firebaseapp.com",
+  projectId: "order-system-4e277",
+  storageBucket: "order-system-4e277.firebasestorage.app",
+  messagingSenderId: "37144199708",
+  appId: "1:37144199708:web:4af68aa01fe63bea2e55d9",
+  measurementId: "G-9BRNW9X5KE"
+};
+
+    const appId = "mama-love-breakfast"; // 你可以自訂一個唯一的 App ID
+    
+    let db;
+    let auth;
+
+    try {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+    } catch (error) {
+        console.error("Firebase 初始化失敗:", error);
+        const loadingSpinner = document.getElementById('loading-spinner');
+        if (loadingSpinner) {
+            loadingSpinner.innerHTML = '<p class="text-red-500">錯誤：無法連接至點餐系統，請檢查 Firebase 設定。</p>';
+        }
+    }
+
+    // --- 應用程式狀態 ---
+    let menuItems = []; 
+    let cart = [];
+    let currentCategory = '全部';
+    let tableId = '未指定';
+    let currentCustomizingItemId = null;
+
+    // --- DOM 元素 ---
+    const getEl = (id) => document.getElementById(id);
+    const menuGrid = getEl('menu-grid');
+    const categoryTabs = getEl('category-tabs');
+    const cartButton = getEl('cart-button');
+    const cartCount = getEl('cart-count');
+    const cartModal = getEl('cart-modal');
+    const closeCartButton = getEl('close-cart-button');
+    const cartItemsContainer = getEl('cart-items');
+    const cartTotal = getEl('cart-total');
+    const confirmOrderButton = getEl('confirm-order-button');
+    const successModal = getEl('success-modal');
+    const closeSuccessButton = getEl('close-success-button');
+    const tableNumberSpan = getEl('tableNumber');
+    const cartTableNumberSpan = getEl('cart-table-number');
+    const loadingSpinner = getEl('loading-spinner');
+    
+    // 客製化 Modal
+    const customizationModal = getEl('customization-modal');
+    const customModalTitle = getEl('custom-modal-title');
+    const itemNotes = getEl('item-notes');
+    const itemQuantity = getEl('item-quantity');
+    const decreaseQuantityBtn = getEl('decrease-quantity');
+    const increaseQuantityBtn = getEl('increase-quantity');
+    const cancelCustomizationBtn = getEl('cancel-customization');
+    const confirmCustomizationBtn = getEl('confirm-customization');
+
+    // --- 核心功能函式 ---
+
+    // 從 Firebase 讀取菜單
+    const fetchMenu = () => {
+        if (!db) return;
+        const menuCollectionRef = collection(db, `artifacts/${appId}/public/data/menu`);
+        
+        onSnapshot(menuCollectionRef, (snapshot) => {
+            menuItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            menuItems = menuItems.filter(item => item.isAvailable);
+            
+            loadingSpinner.classList.add('hidden');
+            renderCategoryTabs();
+            renderMenuItems();
+        }, (error) => {
+            console.error("讀取菜單失敗:", error);
+            loadingSpinner.innerHTML = '<p class="text-red-500">菜單載入失敗，請稍後再試。</p>';
+        });
+    };
+
+    const getTableNumberFromURL = () => {
+        const params = new URLSearchParams(window.location.search);
+        tableId = params.get('table') || 'A1';
+        tableNumberSpan.textContent = tableId;
+        cartTableNumberSpan.textContent = tableId;
+    };
+
+    const renderMenuItems = () => {
+        menuGrid.innerHTML = '';
+        const filteredItems = currentCategory === '全部' 
+            ? menuItems 
+            : menuItems.filter(item => item.category === currentCategory);
+
+        if (filteredItems.length === 0 && menuItems.length > 0) {
+             menuGrid.innerHTML = `<p class="col-span-full text-center text-gray-500">這個分類目前沒有餐點喔！</p>`;
+        }
+
+        filteredItems.forEach(item => {
+            // 智慧圖片邏輯：如果有 item.image 就用它，沒有就用預設圖
+            const imageUrl = item.image || `https://placehold.co/600x400/fbbf24/ffffff?text=${encodeURIComponent(item.name)}`;
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-2xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-all duration-300 ease-in-out flex flex-col';
+            card.innerHTML = `
+                <div class="aspect-w-16 aspect-h-9">
+                    <img src="${imageUrl}" alt="${item.name}" class="w-full h-full object-cover">
+                </div>
+                <div class="p-5 flex flex-col flex-grow">
+                    <h3 class="text-xl font-bold text-gray-800 flex-grow">${item.name}</h3>
+                    <div class="flex justify-between items-center mt-4">
+                        <span class="text-2xl font-bold text-amber-600">$${item.price}</span>
+                        <button data-id="${item.id}" class="order-btn bg-amber-500 text-white px-5 py-2 rounded-lg font-semibold hover:bg-amber-600 transition-colors shadow-md hover:shadow-lg">點餐</button>
+                    </div>
+                </div>
+            `;
+            menuGrid.appendChild(card);
+        });
+    };
+
+    const renderCategoryTabs = () => {
+        const categories = ['全部', ...new Set(menuItems.map(item => item.category))];
+        categoryTabs.innerHTML = '';
+        categories.forEach(category => {
+            const tab = document.createElement('button');
+            tab.textContent = category;
+            tab.className = `px-5 py-2 rounded-full text-md font-semibold transition-all duration-300 ${currentCategory === category ? 'bg-amber-500 text-white shadow-lg' : 'bg-white text-amber-700 hover:bg-amber-100 shadow'}`;
+            tab.onclick = () => {
+                currentCategory = category;
+                renderCategoryTabs();
+                renderMenuItems();
+            };
+            categoryTabs.appendChild(tab);
+        });
+    };
+
+    const updateCart = () => {
+        const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+        cartCount.textContent = totalItems;
+        cartCount.classList.toggle('hidden', totalItems === 0);
+        
+        cartItemsContainer.innerHTML = '';
+        if (cart.length === 0) {
+            cartItemsContainer.innerHTML = '<p class="text-gray-500 text-center py-8">您的購物車是空的喔！</p>';
+            confirmOrderButton.disabled = true;
+        } else {
+            cart.forEach(cartItem => {
+                const menuItem = menuItems.find(item => item.id === cartItem.menuItemId);
+                if (!menuItem) return; // 如果菜單更新後找不到品項，就跳過
+                const imageUrl = menuItem.image || `https://placehold.co/600x400/fbbf24/ffffff?text=${encodeURIComponent(menuItem.name)}`;
+                const itemElement = document.createElement('div');
+                itemElement.className = 'flex justify-between items-start py-4 border-b last:border-b-0';
+                itemElement.innerHTML = `
+                    <div class="flex items-start">
+                        <img src="${imageUrl}" class="w-20 h-20 object-cover rounded-lg mr-4">
+                        <div>
+                            <p class="font-bold text-lg">${menuItem.name} <span class="text-gray-500 font-medium">x ${cartItem.quantity}</span></p>
+                            <p class="text-gray-600 text-md">$${menuItem.price * cartItem.quantity}</p>
+                            ${cartItem.notes ? `<p class="text-sm text-amber-700 bg-amber-100 rounded-md px-2 py-1 mt-2 inline-block">備註: ${cartItem.notes}</p>` : ''}
+                        </div>
+                    </div>
+                    <button data-id="${cartItem.cartItemId}" class="remove-item-btn text-red-400 hover:text-red-600 font-bold text-2xl p-2">&times;</button>
+                `;
+                cartItemsContainer.appendChild(itemElement);
+            });
+            confirmOrderButton.disabled = false;
+        }
+
+        const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        cartTotal.textContent = `$${total}`;
+    };
+    
+    const openCustomizationModal = (itemId) => {
+        currentCustomizingItemId = itemId;
+        const menuItem = menuItems.find(item => item.id === itemId);
+        if (!menuItem) {
+            alert("抱歉，這個餐點目前無法點選。");
+            return;
+        }
+        customModalTitle.textContent = `${menuItem.name}`;
+        itemNotes.value = '';
+        itemQuantity.value = 1;
+        customizationModal.classList.remove('hidden');
+    };
+
+    const closeCustomizationModal = () => {
+        customizationModal.classList.add('hidden');
+        currentCustomizingItemId = null;
+    };
+    
+    // 將訂單送到 Firebase
+    const submitOrder = async () => {
+        if (cart.length === 0 || !db) return;
+
+        confirmOrderButton.disabled = true;
+        confirmOrderButton.textContent = '訂單傳送中...';
+
+        const orderData = {
+            table: tableId,
+            status: 'new',
+            totalAmount: cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+            createdAt: serverTimestamp(),
+            items: cart.map(cartItem => {
+                const menuItem = menuItems.find(item => item.id === cartItem.menuItemId);
+                return { 
+                    name: menuItem.name, 
+                    quantity: cartItem.quantity, 
+                    price: cartItem.price, 
+                    notes: cartItem.notes 
+                };
+            }),
+        };
+
+        try {
+            const ordersCollectionRef = collection(db, `artifacts/${appId}/public/data/orders`);
+            await addDoc(ordersCollectionRef, orderData);
+            
+            cart = [];
+            updateCart();
+            cartModal.classList.add('hidden');
+            successModal.classList.remove('hidden');
+
+        } catch (error) {
+            console.error("送出訂單失敗:", error);
+            alert('抱歉，送出訂單時發生錯誤，請稍後再試。');
+        } finally {
+            confirmOrderButton.disabled = false;
+            confirmOrderButton.textContent = '確認下單';
+        }
+    };
+
+    // --- 事件監聽 ---
+
+    menuGrid.addEventListener('click', (e) => {
+        const orderBtn = e.target.closest('.order-btn');
+        if (orderBtn) {
+            // 錯誤修正：不再使用 parseInt，直接傳遞字串 ID
+            const itemId = orderBtn.dataset.id;
+            openCustomizationModal(itemId);
+        }
+    });
+
+    decreaseQuantityBtn.addEventListener('click', () => {
+        itemQuantity.value = Math.max(1, parseInt(itemQuantity.value) - 1);
+    });
+    increaseQuantityBtn.addEventListener('click', () => {
+        itemQuantity.value = parseInt(itemQuantity.value) + 1;
+    });
+    cancelCustomizationBtn.addEventListener('click', closeCustomizationModal);
+    confirmCustomizationBtn.addEventListener('click', () => {
+        const menuItem = menuItems.find(item => item.id === currentCustomizingItemId);
+        const newItem = {
+            cartItemId: Date.now(),
+            menuItemId: menuItem.id,
+            quantity: parseInt(itemQuantity.value),
+            price: menuItem.price,
+            notes: itemNotes.value.trim()
+        };
+        cart.push(newItem);
+        updateCart();
+        closeCustomizationModal();
+    });
+
+    cartButton.addEventListener('click', () => cartModal.classList.remove('hidden'));
+    closeCartButton.addEventListener('click', () => cartModal.classList.add('hidden'));
+    
+    cartItemsContainer.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.remove-item-btn');
+        if (removeBtn) {
+            const cartItemIdToRemove = parseInt(removeBtn.dataset.id);
+            cart = cart.filter(item => item.cartItemId !== cartItemIdToRemove);
+            updateCart();
+        }
+    });
+
+    confirmOrderButton.addEventListener('click', submitOrder);
+    closeSuccessButton.addEventListener('click', () => successModal.classList.add('hidden'));
+    
+    // --- 初始載入 ---
+    const initializeAppWithAuth = async () => {
+        if (!auth) return;
+        try {
+            await signInAnonymously(auth);
+            console.log("Firebase 驗證成功！ User ID:", auth.currentUser.uid);
+            
+            getTableNumberFromURL();
+            fetchMenu();
+            updateCart();
+
+        } catch (error) {
+            console.error("Firebase 驗證失敗:", error);
+            loadingSpinner.innerHTML = '<p class="text-red-500">錯誤：無法驗證您的身份，請重新整理。</p>';
+        }
+    };
+
+    initializeAppWithAuth();
+</script>
+
+</body>
+</html>
